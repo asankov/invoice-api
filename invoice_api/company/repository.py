@@ -1,16 +1,9 @@
 from abc import ABC, abstractmethod
-
-from pydantic import BaseModel
-import uuid
 from google.cloud import firestore
 from google.oauth2 import service_account
 
-class Company(BaseModel):
-    id: uuid.UUID
-    name: str
-    address: str
-    phone: str
-    email: str
+from invoice_api.company.models import Company
+
 
 class CompanyRepository(ABC):
     """Abstract repository interface for company data operations."""

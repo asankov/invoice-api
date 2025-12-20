@@ -1,26 +1,9 @@
 from abc import ABC, abstractmethod
-from os import abort
 from google.oauth2 import service_account
 from google.cloud import firestore
 from datetime import datetime, timedelta, timezone
 import uuid
 
-
-# CREATE TABLE users (
-#     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-#     email VARCHAR(255) UNIQUE NOT NULL,
-#     created_at TIMESTAMP DEFAULT NOW()
-# );
-
-# -- OTP codes table
-# CREATE TABLE otp_codes (
-#     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-#     email VARCHAR(255) NOT NULL,
-#     code VARCHAR(6) NOT NULL,
-#     expires_at TIMESTAMP NOT NULL,
-#     used BOOLEAN DEFAULT FALSE,
-#     created_at TIMESTAMP DEFAULT NOW()
-# );
 
 class AuthRepository(ABC):
     @abstractmethod
@@ -34,6 +17,7 @@ class AuthRepository(ABC):
     @abstractmethod
     def mark_code_as_used(self, email: str, code: str):
         pass
+
 
 class FirestoreAuthRepository(AuthRepository):
     """Firestore implementation of AuthRepository."""
