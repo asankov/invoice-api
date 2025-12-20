@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Terraform files
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+*.tfplan
+
+# AWS Lambda package
+lambda_package.zip
+
+# Docker
+.dockerignore
+
+# GCP
+.gcloud/
+gcloud-service-key.json
