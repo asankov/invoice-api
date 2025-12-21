@@ -35,10 +35,10 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest \
-                       -t gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker build -t europe-west8-docker.pkg.dev/${{ env.PROJECT_ID }}/invoice-api/${{ env.IMAGE_NAME }}:latest \
+                       -t europe-west8-docker.pkg.dev/${{ env.PROJECT_ID }}/invoice-api/${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
       - name: Push Docker image to GCR
         run: |
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push europe-west8-docker.pkg.dev/${{ env.PROJECT_ID }}/invoice-api/${{ env.IMAGE_NAME }}:latest
+          docker push europe-west8-docker.pkg.dev/${{ env.PROJECT_ID }}/invoice-api/${{ env.IMAGE_NAME }}:${{ github.sha }}
