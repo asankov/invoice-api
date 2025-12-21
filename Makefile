@@ -6,3 +6,5 @@ lint:
 	uv run ruff check --fix .
 	@echo "Running ruff check (final validation)..."
 	uv run ruff check .
+	@echo "Running mypy type checking..."
+	uv run mypy .

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+
 from google.cloud import firestore
 from google.oauth2 import service_account
 
@@ -25,9 +26,7 @@ class FirestoreCompanyRepository(CompanyRepository):
     def __init__(self, project_id: str, collection_name: str):
         self._project_id = project_id
         self._collection_name = collection_name
-        credentials = service_account.Credentials.from_service_account_file(
-            "firestore-sa.json"
-        )
+        credentials = service_account.Credentials.from_service_account_file("firestore-sa.json")
         self._db = firestore.Client(
             project=self._project_id, database="invoicer", credentials=credentials
         )

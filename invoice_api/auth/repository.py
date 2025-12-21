@@ -1,8 +1,9 @@
-from abc import ABC, abstractmethod
-from google.oauth2 import service_account
-from google.cloud import firestore
-from datetime import datetime, timedelta, timezone
 import uuid
+from abc import ABC, abstractmethod
+from datetime import UTC, datetime, timedelta
+
+from google.cloud import firestore
+from google.oauth2 import service_account
 
 
 class AuthRepository(ABC):
@@ -27,16 +28,14 @@ class FirestoreAuthRepository(AuthRepository):
     def __init__(self, project_id: str, collection_name: str):
         self._project_id = project_id
         self._collection_name = collection_name
-        credentials = service_account.Credentials.from_service_account_file(
-            "firestore-sa.json"
-        )
+        credentials = service_account.Credentials.from_service_account_file("firestore-sa.json")
         self._db = firestore.Client(
             project=self._project_id, database="invoicer", credentials=credentials
         )
         self._collection = self._db.collection(self._collection_name)
 
     def store_code(self, email: str, code: str):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         doc_data = {
             "id": str(uuid.uuid4()),
             "email": email,
@@ -56,7 +55,7 @@ class FirestoreAuthRepository(AuthRepository):
             query = query.where("used", "==", False)
 
         if unexpired_only:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             query = query.where("expires_at", ">", now)
 
         docs = query.stream()

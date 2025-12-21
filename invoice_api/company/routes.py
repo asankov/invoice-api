@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
 import uuid
+
+from fastapi import APIRouter, Depends, HTTPException
 
 from invoice_api.auth.dependencies import get_current_user
 from invoice_api.company.models import Company, CompanyDetails, CreateCompanyRequest

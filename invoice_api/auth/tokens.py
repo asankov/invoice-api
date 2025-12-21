@@ -1,16 +1,15 @@
 import os
-import jwt
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
-ACCESS_SECRET = os.getenv(
-    "JWT_SECRET", "jjjkfjodsbhfjsbnffehwufewn819u90sjfadhgie(*hifWHR3fenf89a"
-)
+import jwt
+
+ACCESS_SECRET = os.getenv("JWT_SECRET", "jjjkfjodsbhfjsbnffehwufewn819u90sjfadhgie(*hifWHR3fenf89a")
 ACCESS_TOKEN_EXPIRY = timedelta(minutes=15)
 
 
 def create_access_token(email: str) -> str:
     """Create a JWT access token for the given email."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     access_payload = {
         "email": email,
         "iat": now,

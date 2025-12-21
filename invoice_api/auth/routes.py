@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException
 import secrets
+
+from fastapi import APIRouter, HTTPException
 
 from invoice_api.auth.models import RequestCodeRequest, VerifyCodeRequest
 from invoice_api.auth.repository import AuthRepository
-from invoice_api.email.service import EmailService
 from invoice_api.auth.tokens import create_access_token
+from invoice_api.email.service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
