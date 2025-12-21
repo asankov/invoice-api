@@ -14,6 +14,11 @@ dependencies = [
     "resend>=2.19.0",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.8.4",
+]
+
 [tool.uv]
 package = true
 
