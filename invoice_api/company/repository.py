@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 from google.cloud import firestore
-from google.oauth2 import service_account
 
 from invoice_api.company.models import Company
 
@@ -23,14 +22,10 @@ class CompanyRepository(ABC):
 class FirestoreCompanyRepository(CompanyRepository):
     """Firestore implementation of CompanyRepository."""
 
-    def __init__(self, project_id: str, collection_name: str) -> None:
+    def __init__(self, project_id: str) -> None:
         self._project_id = project_id
-        self._collection_name = collection_name
-        credentials = service_account.Credentials.from_service_account_file("firestore-sa.json")
-        self._db = firestore.Client(
-            project=self._project_id, database="invoicer", credentials=credentials
-        )
-        self._collection = self._db.collection(self._collection_name)
+        self._db = firestore.Client(project=self._project_id, database="invoicer")
+        self._collection = self._db.collection("companies")
 
     def get_company(self, user_email: str) -> Company | None:
         """Retrieve company details for a user from Firestore."""

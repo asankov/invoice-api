@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
 
 from google.cloud import firestore
-from google.oauth2 import service_account
 
 
 class AuthRepository(ABC):
@@ -33,14 +32,10 @@ class AuthRepository(ABC):
 class FirestoreAuthRepository(AuthRepository):
     """Firestore implementation of AuthRepository."""
 
-    def __init__(self, project_id: str, collection_name: str) -> None:
+    def __init__(self, project_id: str) -> None:
         self._project_id = project_id
-        self._collection_name = collection_name
-        credentials = service_account.Credentials.from_service_account_file("firestore-sa.json")
-        self._db = firestore.Client(
-            project=self._project_id, database="invoicer", credentials=credentials
-        )
-        self._collection = self._db.collection(self._collection_name)
+        self._db = firestore.Client(project=self._project_id, database="invoicer")
+        self._collection = self._db.collection("auth-codes")
         self._users_collection = self._db.collection("users")
 
     def store_code(self, email: str, code: str) -> None:
