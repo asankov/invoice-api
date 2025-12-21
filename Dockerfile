@@ -22,5 +22,5 @@ RUN uv sync --frozen --no-dev
 # Expose port
 EXPOSE 8080
 
-# Run the application with uvicorn
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run the application
+CMD ["uv", "run", "python", "main.py"]
