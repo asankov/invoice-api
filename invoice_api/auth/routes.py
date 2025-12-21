@@ -1,7 +1,7 @@
 import secrets
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 from invoice_api.auth.models import RequestCodeRequest, VerifyCodeRequest
 from invoice_api.auth.repository import AuthRepository
@@ -23,6 +23,22 @@ def get_email_service() -> EmailService:
     from main import email_service
 
     return email_service
+
+
+class SignUpRequest(BaseModel):
+    name: str
+    email: EmailStr
+
+
+@router.post("/sign-up", status_code=status.HTTP_200_OK)
+def sign_up(request: SignUpRequest) -> None:
+    code = str(secrets.randbelow(1000000)).zfill(6)
+
+    repository = get_auth_repository()
+    repository.create_user(request.email, request.name, code)
+
+    email_svc = get_email_service()
+    email_svc.send_verification_email(request.email, code)
 
 
 @router.post("/request_code", status_code=status.HTTP_200_OK)

@@ -21,6 +21,14 @@ class AuthRepository(ABC):
     def mark_code_as_used(self, email: str, code: str) -> None:
         pass
 
+    @abstractmethod
+    def create_user(self, email: str, name: str, verification_code: str) -> None:
+        pass
+
+    @abstractmethod
+    def verify_user(self, email: str) -> None:
+        pass
+
 
 class FirestoreAuthRepository(AuthRepository):
     """Firestore implementation of AuthRepository."""
@@ -33,6 +41,7 @@ class FirestoreAuthRepository(AuthRepository):
             project=self._project_id, database="invoicer", credentials=credentials
         )
         self._collection = self._db.collection(self._collection_name)
+        self._users_collection = self._db.collection("users")
 
     def store_code(self, email: str, code: str) -> None:
         now = datetime.now(UTC)
@@ -73,3 +82,24 @@ class FirestoreAuthRepository(AuthRepository):
 
         for doc in docs:
             doc.reference.update({"used": True})
+
+    def create_user(self, email: str, name: str, verification_code: str) -> None:
+        now = datetime.now(UTC)
+        user_data = {
+            "id": str(uuid.uuid4()),
+            "email": email,
+            "name": name,
+            "created_at": now,
+            "verification_code": verification_code,
+            "email_verified_at": None,
+        }
+        self._users_collection.add(user_data)
+
+    def verify_user(self, email: str) -> None:
+        query = self._users_collection.where("email", "==", email)
+        docs = query.stream()
+
+        for doc in docs:
+            doc.reference.update(
+                {"email_verified_at": datetime.now(UTC), "verification_code": None}
+            )
