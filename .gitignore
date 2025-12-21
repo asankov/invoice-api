@@ -5,6 +5,8 @@ build/
 dist/
 wheels/
 *.egg-info
+.mypy_cache
+.ruff_cache
 
 # Virtual environments
 .venv
@@ -27,3 +29,4 @@ lambda_package.zip
 # GCP
 .gcloud/
 gcloud-service-key.json
+firestore-sa.json
