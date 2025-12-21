@@ -4,10 +4,10 @@ from invoice_api.email.service import EmailService
 
 
 class ResendEmailService(EmailService):
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         resend.api_key = api_key
 
-    def send_otp_email(self, to_email: str, code: str):
+    def send_otp_email(self, to_email: str, code: str) -> None:
         resend.Emails.send(
             {
                 "from": "onboarding@resend.dev",

@@ -1,6 +1,7 @@
 import secrets
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 
 from invoice_api.auth.models import RequestCodeRequest, VerifyCodeRequest
 from invoice_api.auth.repository import AuthRepository
@@ -24,8 +25,8 @@ def get_email_service() -> EmailService:
     return email_service
 
 
-@router.post("/request_code")
-def request_code(request: RequestCodeRequest):
+@router.post("/request_code", status_code=status.HTTP_200_OK)
+def request_code(request: RequestCodeRequest) -> None:
     code = str(secrets.randbelow(1000000)).zfill(6)
 
     repository = get_auth_repository()
@@ -34,11 +35,13 @@ def request_code(request: RequestCodeRequest):
     email_svc = get_email_service()
     email_svc.send_otp_email(request.email, code)
 
-    return None
+
+class VerifyCodeResponse(BaseModel):
+    token: str
 
 
 @router.post("/verify")
-def verify_code(request: VerifyCodeRequest):
+def verify_code(request: VerifyCodeRequest) -> VerifyCodeResponse:
     repository = get_auth_repository()
     codes = repository.get_codes_for_user(request.email)
 
@@ -48,4 +51,4 @@ def verify_code(request: VerifyCodeRequest):
     repository.mark_code_as_used(request.email, request.code)
     access_token = create_access_token(request.email)
 
-    return {"jwt": access_token}
+    return VerifyCodeResponse(token=access_token)

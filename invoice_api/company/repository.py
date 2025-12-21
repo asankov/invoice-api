@@ -23,7 +23,7 @@ class CompanyRepository(ABC):
 class FirestoreCompanyRepository(CompanyRepository):
     """Firestore implementation of CompanyRepository."""
 
-    def __init__(self, project_id: str, collection_name: str):
+    def __init__(self, project_id: str, collection_name: str) -> None:
         self._project_id = project_id
         self._collection_name = collection_name
         credentials = service_account.Credentials.from_service_account_file("firestore-sa.json")

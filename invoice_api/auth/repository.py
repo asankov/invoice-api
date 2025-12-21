@@ -8,7 +8,7 @@ from google.oauth2 import service_account
 
 class AuthRepository(ABC):
     @abstractmethod
-    def store_code(self, email: str, code: str):
+    def store_code(self, email: str, code: str) -> None:
         pass
 
     @abstractmethod
@@ -18,14 +18,14 @@ class AuthRepository(ABC):
         pass
 
     @abstractmethod
-    def mark_code_as_used(self, email: str, code: str):
+    def mark_code_as_used(self, email: str, code: str) -> None:
         pass
 
 
 class FirestoreAuthRepository(AuthRepository):
     """Firestore implementation of AuthRepository."""
 
-    def __init__(self, project_id: str, collection_name: str):
+    def __init__(self, project_id: str, collection_name: str) -> None:
         self._project_id = project_id
         self._collection_name = collection_name
         credentials = service_account.Credentials.from_service_account_file("firestore-sa.json")
@@ -34,7 +34,7 @@ class FirestoreAuthRepository(AuthRepository):
         )
         self._collection = self._db.collection(self._collection_name)
 
-    def store_code(self, email: str, code: str):
+    def store_code(self, email: str, code: str) -> None:
         now = datetime.now(UTC)
         doc_data = {
             "id": str(uuid.uuid4()),
@@ -67,7 +67,7 @@ class FirestoreAuthRepository(AuthRepository):
 
         return codes
 
-    def mark_code_as_used(self, email: str, code: str):
+    def mark_code_as_used(self, email: str, code: str) -> None:
         query = self._collection.where("email", "==", email).where("code", "==", code)
         docs = query.stream()
 

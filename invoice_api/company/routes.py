@@ -16,11 +16,11 @@ def get_company_repository() -> CompanyRepository:
     return company_repository
 
 
-@router.get("", response_model=CompanyDetails)
+@router.get("")
 def get_company(
     user_email: str = Depends(get_current_user),
     repository: CompanyRepository = Depends(get_company_repository),
-):
+) -> CompanyDetails:
     item = repository.get_company(user_email)
     if not item:
         raise HTTPException(status_code=404, detail="Company details not found")
@@ -34,12 +34,12 @@ def get_company(
     )
 
 
-@router.post("", response_model=CompanyDetails)
+@router.post("")
 def create_company(
     company: CreateCompanyRequest,
     user_email: str = Depends(get_current_user),
     repository: CompanyRepository = Depends(get_company_repository),
-):
+) -> CompanyDetails:
     id = uuid.uuid4()
     repository.save_company(
         user_email,

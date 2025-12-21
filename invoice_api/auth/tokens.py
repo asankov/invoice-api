@@ -22,7 +22,7 @@ def verify_access_token(token: str) -> str | None:
     """Verify and decode an access token. Returns email or None if invalid."""
     try:
         payload = jwt.decode(token, ACCESS_SECRET, algorithms=["HS256"])
-        return payload["email"]
+        return str(payload["email"])
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError:
