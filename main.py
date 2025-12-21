@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from invoice_api.auth.repository import AuthRepository, FirestoreAuthRepository
 from invoice_api.auth.routes import router as auth_router
@@ -11,6 +12,14 @@ from invoice_api.email.resend import ResendEmailService
 from invoice_api.email.service import EmailService
 
 app = FastAPI(title="Invoicing API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://invoices.asankov.dev"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 load_dotenv()
 
