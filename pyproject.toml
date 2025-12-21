@@ -11,7 +11,11 @@ dependencies = [
     "google-cloud-firestore>=2.19.0",
     "uvicorn>=0.34.0",
     "dotenv>=0.9.9",
+    "resend>=2.19.0",
 ]
 
 [tool.uv]
 package = true
+
+[tool.setuptools]
+packages = ["invoice_api"]

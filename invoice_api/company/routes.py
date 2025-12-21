@@ -38,14 +38,21 @@ def create_company(
     user_email: str = Depends(get_current_user),
     repository: CompanyRepository = Depends(get_company_repository)
 ):
+    id = uuid.uuid4()
     repository.save_company(
         user_email,
         Company(
-            id=uuid.uuid4(),
+            id=id,
             name=company.name,
             address=company.address,
             phone=company.phone,
             email=company.email
         )
     )
-    return company
+    return CompanyDetails(
+        id=id,
+        name=company.name,
+        address=company.address,
+        phone=company.phone,
+        email=company.email
+    )

@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-from pydantic import EmailStr
 
 
 class EmailService(ABC):
     @abstractmethod
-    def send_email(self, email: EmailStr, code: str) -> None:
+    def send_otp_email(self, to_email: str, code: str):
         pass

@@ -3,7 +3,7 @@ import secrets
 
 from invoice_api.auth.models import RequestCodeRequest, VerifyCodeRequest
 from invoice_api.auth.repository import AuthRepository
-from invoice_api.auth.service import EmailService
+from invoice_api.email.service import EmailService
 from invoice_api.auth.tokens import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -15,7 +15,7 @@ def get_auth_repository() -> AuthRepository:
     return auth_repository
 
 
-def get_email_service() -> EmailService | None:
+def get_email_service() -> EmailService:
     """Dependency to get the email service instance."""
     from main import email_service
     return email_service
@@ -24,13 +24,12 @@ def get_email_service() -> EmailService | None:
 @router.post("/request_code")
 def request_code(request: RequestCodeRequest):
     code = str(secrets.randbelow(1000000)).zfill(6)
-    
+
     repository = get_auth_repository()
     repository.store_code(request.email, code)
 
     email_svc = get_email_service()
-    if email_svc is not None:
-        email_svc.send_email(request.email, code)
+    email_svc.send_otp_email(request.email, code)
 
     return None
 
