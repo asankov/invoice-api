@@ -29,9 +29,7 @@ class FirestoreCompanyRepository(CompanyRepository):
             "firestore-sa.json"
         )
         self._db = firestore.Client(
-            project=self._project_id,
-            database="invoicer",
-            credentials=credentials
+            project=self._project_id, database="invoicer", credentials=credentials
         )
         self._collection = self._db.collection(self._collection_name)
 
@@ -50,16 +48,18 @@ class FirestoreCompanyRepository(CompanyRepository):
             name=data["name"],
             address=data["address"],
             phone=data["phone"],
-            email=data["email"]
+            email=data["email"],
         )
 
     def save_company(self, user_email: str, company: Company) -> None:
         """Save or update company details for a user in Firestore."""
         doc_ref = self._collection.document(user_email)
-        doc_ref.set({
-            "id": str(company.id),
-            "name": company.name,
-            "address": company.address,
-            "phone": company.phone,
-            "email": company.email
-        })
+        doc_ref.set(
+            {
+                "id": str(company.id),
+                "name": company.name,
+                "address": company.address,
+                "phone": company.phone,
+                "email": company.email,
+            }
+        )

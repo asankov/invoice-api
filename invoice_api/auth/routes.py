@@ -12,12 +12,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def get_auth_repository() -> AuthRepository:
     """Dependency to get the auth repository instance."""
     from main import auth_repository
+
     return auth_repository
 
 
 def get_email_service() -> EmailService:
     """Dependency to get the email service instance."""
     from main import email_service
+
     return email_service
 
 

@@ -2,7 +2,9 @@ import os
 import jwt
 from datetime import datetime, timezone, timedelta
 
-ACCESS_SECRET = os.getenv("JWT_SECRET", "jjjkfjodsbhfjsbnffehwufewn819u90sjfadhgie(*hifWHR3fenf89a")
+ACCESS_SECRET = os.getenv(
+    "JWT_SECRET", "jjjkfjodsbhfjsbnffehwufewn819u90sjfadhgie(*hifWHR3fenf89a"
+)
 ACCESS_TOKEN_EXPIRY = timedelta(minutes=15)
 
 

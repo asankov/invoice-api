@@ -11,7 +11,9 @@ class AuthRepository(ABC):
         pass
 
     @abstractmethod
-    def get_codes_for_user(self, email: str, unused_only: bool = True, unexpired_only: bool = True) -> list[str]:
+    def get_codes_for_user(
+        self, email: str, unused_only: bool = True, unexpired_only: bool = True
+    ) -> list[str]:
         pass
 
     @abstractmethod
@@ -29,9 +31,7 @@ class FirestoreAuthRepository(AuthRepository):
             "firestore-sa.json"
         )
         self._db = firestore.Client(
-            project=self._project_id,
-            database="invoicer",
-            credentials=credentials
+            project=self._project_id, database="invoicer", credentials=credentials
         )
         self._collection = self._db.collection(self._collection_name)
 
@@ -43,11 +43,13 @@ class FirestoreAuthRepository(AuthRepository):
             "code": code,
             "expires_at": now + timedelta(minutes=10),
             "used": False,
-            "created_at": now
+            "created_at": now,
         }
         self._collection.add(doc_data)
 
-    def get_codes_for_user(self, email: str, unused_only: bool = True, unexpired_only: bool = True) -> list[str]:
+    def get_codes_for_user(
+        self, email: str, unused_only: bool = True, unexpired_only: bool = True
+    ) -> list[str]:
         query = self._collection.where("email", "==", email)
 
         if unused_only:
