@@ -24,6 +24,31 @@ This is an example project made to be used as a quick start into building OpenAP
 2. Open `http://localhost:8787/` in your browser to see the Swagger interface where you can try the endpoints.
 3. Changes made in the `src/` folder will automatically trigger the server to reload, you only need to refresh the Swagger interface.
 
+## GitHub Actions
+
+`.github/workflows/ci.yml` runs lint, a type-checked Worker build, schema tests,
+and local D1 migrations on every push and pull request. Run the same checks locally
+with `npm run lint`, `npm run build`, `npm test`, and `npm run db:migrate:local`.
+The checks use Node.js 24 and Python 3.14; the Python tests have no pip dependencies.
+
+`.github/workflows/deploy.yml` runs on pushes to `main`. It reuses CI as a required
+job, then applies production D1 migrations before deploying the Worker. A failed
+migration stops deployment. Production runs are serialized without cancelling
+an active migration or deployment. Use migrations compatible with the currently
+running Worker, since it continues serving requests while migrations are applied.
+If deployment fails after a migration succeeds, that migration remains applied.
+
+Configure these repository secrets under **Settings → Secrets and variables →
+Actions**:
+
+- `CLOUDFLARE_API_TOKEN`: a Cloudflare token with **Account / Workers Scripts /
+  Edit** and **Account / D1 / Edit**, scoped to the deployment account. Add
+  **Zone / Workers Routes / Edit** if custom zone routes are configured later.
+- `CLOUDFLARE_ACCOUNT_ID`: the account containing the Worker and D1 database.
+
+Wrangler uses the Worker name and D1 database configured in `wrangler.jsonc`.
+Both workflows install the exact dependencies from `package-lock.json` with `npm ci`.
+
 ## Database
 
 The D1 schema is defined by versioned SQL files in `migrations/`. TypeScript row

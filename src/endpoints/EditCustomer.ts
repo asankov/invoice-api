@@ -1,6 +1,6 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Customer, Task } from "../types";
+import { type AppContext, Customer } from "../types";
 
 export class EditCustomer extends OpenAPIRoute {
 	schema = {
@@ -39,7 +39,6 @@ export class EditCustomer extends OpenAPIRoute {
 	async handle(c: AppContext) {
 		const data = await this.getValidatedData<typeof this.schema>();
 
-    const id = data.params.id;
 		const dataToPatch = data.body;
 
     if (!dataToPatch.name && !dataToPatch.number && !dataToPatch.address) {
