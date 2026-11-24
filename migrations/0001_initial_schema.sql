@@ -3,8 +3,10 @@
 -- Timestamps use UTC (SQLite CURRENT_TIMESTAMP); dates use YYYY-MM-DD.
 CREATE TABLE customers (
   id TEXT PRIMARY KEY NOT NULL,
-  name TEXT NOT NULL,
-  address TEXT NOT NULL,
+  name_bg TEXT NOT NULL CHECK (length(trim(name_bg)) > 0),
+  name_en TEXT NOT NULL CHECK (length(trim(name_en)) > 0),
+  address_bg TEXT CHECK (length(trim(address_bg)) > 0),
+  address_en TEXT CHECK (length(trim(address_en)) > 0),
   number TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -13,8 +15,10 @@ CREATE TABLE customers (
 -- A single company's configuration. Create this row during initial setup.
 CREATE TABLE settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  company_name TEXT NOT NULL,
-  company_address TEXT NOT NULL DEFAULT '',
+  company_name_bg TEXT NOT NULL CHECK (length(trim(company_name_bg)) > 0),
+  company_name_en TEXT NOT NULL CHECK (length(trim(company_name_en)) > 0),
+  company_address_bg TEXT CHECK (length(trim(company_address_bg)) > 0),
+  company_address_en TEXT CHECK (length(trim(company_address_en)) > 0),
   company_number TEXT,
   currency TEXT NOT NULL DEFAULT 'EUR'
     CHECK (currency GLOB '[A-Z][A-Z][A-Z]'),
@@ -36,11 +40,15 @@ CREATE TABLE invoices (
   total_minor INTEGER NOT NULL DEFAULT 0 CHECK (total_minor >= 0),
   notes TEXT,
   -- Populate these snapshots when issuing an invoice.
-  customer_name TEXT,
-  customer_address TEXT,
+  customer_name_bg TEXT,
+  customer_name_en TEXT,
+  customer_address_bg TEXT CHECK (length(trim(customer_address_bg)) > 0),
+  customer_address_en TEXT CHECK (length(trim(customer_address_en)) > 0),
   customer_number TEXT,
-  company_name TEXT,
-  company_address TEXT,
+  company_name_bg TEXT,
+  company_name_en TEXT,
+  company_address_bg TEXT CHECK (length(trim(company_address_bg)) > 0),
+  company_address_en TEXT CHECK (length(trim(company_address_en)) > 0),
   company_number TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -48,8 +56,10 @@ CREATE TABLE invoices (
   CHECK (
     status = 'draft' OR (
       invoice_number IS NOT NULL AND issue_date IS NOT NULL
-      AND customer_name IS NOT NULL AND customer_address IS NOT NULL
-      AND company_name IS NOT NULL AND company_address IS NOT NULL
+      AND customer_name_bg IS NOT NULL AND customer_name_en IS NOT NULL
+      AND length(trim(customer_name_bg)) > 0 AND length(trim(customer_name_en)) > 0
+      AND company_name_bg IS NOT NULL AND company_name_en IS NOT NULL
+      AND length(trim(company_name_bg)) > 0 AND length(trim(company_name_en)) > 0
     )
   )
 ) STRICT;
@@ -61,7 +71,9 @@ CREATE TABLE invoice_items (
   id TEXT PRIMARY KEY NOT NULL,
   invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
   position INTEGER NOT NULL CHECK (position >= 0),
-  description TEXT NOT NULL,
+  -- Products/services are stored as bilingual invoice items, not a catalog.
+  description_bg TEXT NOT NULL CHECK (length(trim(description_bg)) > 0),
+  description_en TEXT NOT NULL CHECK (length(trim(description_en)) > 0),
   quantity REAL NOT NULL CHECK (quantity > 0),
   unit_price_minor INTEGER NOT NULL CHECK (unit_price_minor >= 0),
   -- Rounded line totals are calculated by the application.

@@ -77,6 +77,20 @@ applied migrations in `d1_migrations`.
 
 Storage conventions:
 
+- Customer and company names use required `_bg` and `_en` columns; both address columns are nullable. Product/service
+  text is currently stored in `invoice_items.description_bg` and `description_en`;
+  there is no separate product catalog. Numbers, quantities, and prices are shared.
+- API text fields use `{ "bg": "…", "en": "…" }`. Customer creation requires both
+  languages for `name`. The `address` object and each translation are optional;
+  send `null` for an address translation to clear it. Customer PATCH accepts individual translations,
+  such as `{ "name": { "en": "New name" } }`. Invoice input includes a nonempty
+  `items` array with bilingual `description`, `quantity`, and `unitPrice` per item.
+  Blank translations are rejected. These are schema changes; handlers remain stubs.
+- The initial migration creates bilingual fields directly. Issued/paid invoices require customer
+  and company name snapshots in both languages; address snapshots are optional.
+- Settings use bilingual `companyName` and optional `companyAddress` with the same
+  translation format as customers. Each company address translation can be omitted
+  or set to `null`; `companyNumber` is a shared optional identifier.
 - Generate text UUIDs in the application with `crypto.randomUUID()`.
 - Store money in integer minor units (for example, `1234` represents EUR 12.34).
   Payments inherit the invoice currency. Convert amounts at the API boundary.

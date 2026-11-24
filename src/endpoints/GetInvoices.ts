@@ -18,6 +18,6 @@ export class GetInvoices extends OpenAPIRoute {
   };
 
   async handle(c: AppContext) {
-    return c.json({ invoices: [{ id: "invoice-1", customerId: "customer-1", total: 100, status: "draft" }] }, 200);
+    return c.json({ invoices: [{ id: "invoice-1", customerId: "customer-1", total: 100, items: [{ description: { bg: "Консултация", en: "Consulting" }, quantity: 1, unitPrice: 100 }], status: "draft" }] }, 200);
   }
 }

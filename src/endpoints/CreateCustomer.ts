@@ -41,8 +41,6 @@ export class CreateCustomer extends OpenAPIRoute {
       );
     }
 
-    return c.json({
-      ...customer
-    }, 201)
+    return c.json({ customer }, 201)
   }
 }

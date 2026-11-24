@@ -1,6 +1,6 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Customer } from "../types";
+import { type AppContext, CustomerPatch } from "../types";
 
 export class EditCustomer extends OpenAPIRoute {
 	schema = {
@@ -10,11 +10,7 @@ export class EditCustomer extends OpenAPIRoute {
       body: {
 				content: {
 					"application/json": {
-            schema: z.object({
-              name: z.string().optional(),
-              address: z.string().optional(),
-              number: z.string().optional(),
-            }),
+            schema: CustomerPatch,
 					},
         },
 			},
@@ -28,7 +24,7 @@ export class EditCustomer extends OpenAPIRoute {
 				content: {
 					"application/json": {
 						schema: z.object({
-							task: Customer,
+							customer: CustomerPatch,
 						}),
 					},
 				},
@@ -41,17 +37,10 @@ export class EditCustomer extends OpenAPIRoute {
 
 		const dataToPatch = data.body;
 
-    if (!dataToPatch.name && !dataToPatch.number && !dataToPatch.address) {
-      return c.json(
-        { error: "Invalid customer data" },
-        400
-      );
-    }
-
 		return c.json(
 			{
 				success: true,
-        customer: {}
+        customer: dataToPatch
 			},
 			201,
 		);

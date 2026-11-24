@@ -22,6 +22,6 @@ export class GetInvoice extends OpenAPIRoute {
 
   async handle(c: AppContext) {
     const data = await this.getValidatedData<typeof this.schema>();
-    return c.json({ invoice: { ...{ id: "invoice-1", customerId: "customer-1", total: 100, status: "draft" }, id: data.params.id } }, 200);
+    return c.json({ invoice: { ...{ id: "invoice-1", customerId: "customer-1", total: 100, items: [{ description: { bg: "Консултация", en: "Consulting" }, quantity: 1, unitPrice: 100 }], status: "draft" }, id: data.params.id } }, 200);
   }
 }

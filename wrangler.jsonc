@@ -11,6 +11,9 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	"assets": {
+		"directory": "./public/"
+	},
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -22,13 +25,13 @@
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
 	 */
-  "d1_databases": [
-    {
-      "binding": "db",
-      "database_name": "prod-d1-tutorial",
-      "database_id": "e1dff527-179c-469d-a5ba-9ee07bc78947"
-    }
-  ]
+	"d1_databases": [
+		{
+			"binding": "invoicer",
+			"database_name": "invoicer",
+			"database_id": "d33cb8dc-4130-4951-8934-12231da3b992"
+		}
+	]
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

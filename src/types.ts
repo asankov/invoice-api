@@ -11,16 +11,41 @@ export const Task = z.object({
 	due_date: z.iso.date(),
 });
 
+// User-supplied translations; identifiers, quantities and money are shared.
+export const BilingualText = z.object({
+  bg: z.string().trim().min(1),
+  en: z.string().trim().min(1),
+});
+
+export const BilingualAddress = z.object({
+  bg: BilingualText.shape.bg.nullish(),
+  en: BilingualText.shape.en.nullish(),
+});
+
 export const Customer = z.object({
-  name: z.string(),
-  address: z.string(),
+  name: BilingualText,
+  address: BilingualAddress.optional(),
   number: z.string().optional(),
-})
+});
+
+// PATCH may update one translation without replacing the other.
+export const CustomerPatch = z.object({
+  name: BilingualText.partial().refine(value => Object.keys(value).length > 0).optional(),
+  address: BilingualAddress.refine(value => Object.keys(value).length > 0).optional(),
+  number: z.string().optional(),
+}).refine(value => Object.keys(value).length > 0);
+
+export const InvoiceItemInput = z.object({
+  description: BilingualText,
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative(),
+});
 
 // Placeholder models for the dummy endpoints. Replace with domain models later.
 export const InvoiceInput = z.object({
   customerId: z.string(),
   total: z.number().nonnegative(),
+  items: z.array(InvoiceItemInput).min(1),
 });
 
 export const Invoice = InvoiceInput.extend({
@@ -38,7 +63,9 @@ export const Payment = PaymentInput.extend({
 });
 
 export const Settings = z.object({
-  companyName: z.string(),
+  companyName: BilingualText,
+  companyAddress: BilingualAddress.optional(),
+  companyNumber: z.string().optional(),
   currency: z.string(),
 });
 

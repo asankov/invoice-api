@@ -1,5 +1,5 @@
 /**
- * D1 row models matching migrations/0001_initial_schema.sql.
+ * D1 row models matching the complete migrations/ schema.
  * IDs are application-generated UUIDs. Amounts are integer minor units.
  * Dates are YYYY-MM-DD; timestamps are UTC SQLite datetime strings.
  * These storage models are separate from the API's placeholder Zod schemas.
@@ -11,15 +11,19 @@ interface Timestamps {
 
 export interface CustomerRow extends Timestamps {
   id: string;
-  name: string;
-  address: string;
+  name_bg: string;
+  name_en: string;
+  address_bg: string | null;
+  address_en: string | null;
   number: string | null;
 }
 
 export interface SettingsRow extends Timestamps {
   id: 1;
-  company_name: string;
-  company_address: string;
+  company_name_bg: string;
+  company_name_en: string;
+  company_address_bg: string | null;
+  company_address_en: string | null;
   company_number: string | null;
   currency: string;
 }
@@ -38,11 +42,15 @@ export interface InvoiceRow extends Timestamps {
   tax_minor: number;
   total_minor: number;
   notes: string | null;
-  customer_name: string | null;
-  customer_address: string | null;
+  customer_name_bg: string | null;
+  customer_name_en: string | null;
+  customer_address_bg: string | null;
+  customer_address_en: string | null;
   customer_number: string | null;
-  company_name: string | null;
-  company_address: string | null;
+  company_name_bg: string | null;
+  company_name_en: string | null;
+  company_address_bg: string | null;
+  company_address_en: string | null;
   company_number: string | null;
 }
 
@@ -50,7 +58,8 @@ export interface InvoiceItemRow extends Timestamps {
   id: string;
   invoice_id: string;
   position: number;
-  description: string;
+  description_bg: string;
+  description_en: string;
   quantity: number;
   unit_price_minor: number;
   subtotal_minor: number;

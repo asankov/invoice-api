@@ -25,13 +25,13 @@ export class GetCustomers extends OpenAPIRoute {
 			{
 				customers: [
 					{
-						name: "Alice Johnson",
-						address: "123 Main Street",
+						name: { bg: "Алис Джонсън", en: "Alice Johnson" },
+						address: { bg: "ул. Главна 123", en: "123 Main Street" },
 						number: "+1-202-555-0101",
 					},
 					{
-						name: "Bob Smith",
-						address: "456 Oak Avenue",
+						name: { bg: "Боб Смит", en: "Bob Smith" },
+						address: { bg: "бул. Дъб 456", en: "456 Oak Avenue" },
 					},
 				],
 			},

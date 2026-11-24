@@ -18,6 +18,6 @@ export class GetSettings extends OpenAPIRoute {
   };
 
   async handle(c: AppContext) {
-    return c.json({ settings: { companyName: "Example Company", currency: "EUR" } }, 200);
+    return c.json({ settings: { companyName: { bg: "Примерна фирма", en: "Example Company" }, currency: "EUR" } }, 200);
   }
 }
