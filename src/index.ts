@@ -16,6 +16,11 @@ import { CreatePayment } from "./endpoints/CreatePayment";
 import { GetPayments } from "./endpoints/GetPayments";
 import { GetSettings } from "./endpoints/GetSettings";
 import { UpdateSettings } from "./endpoints/UpdateSettings";
+import { GetProducts } from "./endpoints/GetProducts";
+import { GetProduct } from "./endpoints/GetProduct";
+import { CreateProduct } from "./endpoints/CreateProduct";
+import { EditProduct } from "./endpoints/EditProduct";
+import { DeleteProduct } from "./endpoints/DeleteProduct";
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
@@ -36,6 +41,12 @@ openapi.get("/api/dashboard", GetDashboard);
 openapi.get("/api/customers", GetCustomers);
 openapi.post("/api/customers", CreateCustomer);
 openapi.patch("/api/customers/:id", EditCustomer);
+
+openapi.get("/api/products", GetProducts);
+openapi.post("/api/products", CreateProduct);
+openapi.get("/api/products/:id", GetProduct);
+openapi.patch("/api/products/:id", EditProduct);
+openapi.delete("/api/products/:id", DeleteProduct);
 
 openapi.get("/api/invoices", GetInvoices);
 openapi.post("/api/invoices", CreateInvoice);

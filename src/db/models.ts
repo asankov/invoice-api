@@ -9,6 +9,14 @@ interface Timestamps {
   updated_at: string;
 }
 
+export interface ProductRow extends Timestamps {
+  id: string;
+  name_bg: string;
+  name_en: string;
+  price_minor: number;
+  currency: 'USD' | 'EUR';
+}
+
 export interface CustomerRow extends Timestamps {
   id: string;
   name_bg: string;
@@ -59,6 +67,8 @@ export interface InvoiceRow extends Timestamps {
 export interface InvoiceItemRow extends Timestamps {
   id: string;
   invoice_id: string;
+  product_id: string | null;
+  currency: string;
   position: number;
   description_bg: string;
   description_en: string;

@@ -62,13 +62,15 @@ Both workflows install the exact dependencies from `package-lock.json` with `npm
 ## Database
 
 The D1 schema is defined by versioned SQL files in `migrations/`. TypeScript row
-models are in `src/db/models.ts`, and D1 queries live in `src/db/storage.ts`.
+models are in `src/db/models.ts`; D1 queries live in `src/db/storage.ts` and
+`src/db/products.ts`.
 All endpoints use the configured `invoicer` binding, except PDF rendering, which
 is deferred and returns HTTP 501.
 
 The initial schema contains `customers`, `invoices`, `invoice_items`, `payments`,
 and a singleton `settings` table (`id = 1`). Migration `0002` adds an invoice-number
-sequence, invoice revisions, and line-item tax rates. The dashboard aggregates
+sequence, invoice revisions, and line-item tax rates. Migration `0003` adds the
+product catalog and currency/source-ID fields on invoice snapshots. The dashboard aggregates
 these tables rather than storing a separate copy of its totals. This assumes one company
 per database. Settings are created during company setup; no example data is seeded.
 
@@ -90,13 +92,14 @@ applied migrations in `d1_migrations`.
 Storage conventions:
 
 - Customer and company names use required `_bg` and `_en` columns; both address columns are nullable. Product/service
-  text is currently stored in `invoice_items.description_bg` and `description_en`;
-  there is no separate product catalog. Numbers, quantities, and prices are shared.
+  names are stored in the `products` catalog and copied into
+  `invoice_items.description_bg` and `description_en` as denormalized snapshots.
+  Numbers, quantities, and prices are shared between languages.
 - API text fields use `{ "bg": "…", "en": "…" }`. Customer creation requires both
   languages for `name`. The `address` object and each translation are optional;
   send `null` for an address translation to clear it. Customer PATCH accepts individual translations,
   such as `{ "name": { "en": "New name" } }`. Invoice input includes a nonempty
-  `items` array with bilingual `description`, `quantity`, and `unitPrice` per item.
+  `products` array selecting catalog entries by `productId` and quantity.
   Blank translations are rejected.
 - The initial migration creates bilingual fields directly. Issued/paid invoices require customer
   and company name snapshots in both languages; address snapshots are optional.
@@ -126,7 +129,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
 
 ## API behavior
 
-- `GET /api/customers` and `GET /api/invoices` accept `limit` (default 50, maximum
+- `GET /api/customers`, `GET /api/products`, and `GET /api/invoices` accept `limit` (default 50, maximum
   100) and `offset` (default 0). Responses include the records, `total`, `limit`,
   and `offset`. Ordering is newest first, with IDs breaking timestamp ties.
 - `POST /api/customers` returns `{ customer }` with a generated ID. Customer PATCH
@@ -141,17 +144,34 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
   }
   ```
 
-- Create drafts with a customer ID and 1-100 items. Each item has a bilingual
-  `description`, positive `quantity` (up to six decimal places), `unitPrice`, and
-  optional `taxRate` percentage (default 0, up to two decimal places). `dueDate`
-  and `notes` are optional and nullable. Invoice currency is copied from settings
-  at creation and retained if settings change later.
+- Manage catalog entries with `GET/POST /api/products` and
+  `GET/PATCH/DELETE /api/products/:id`. Products have bilingual `name`, nonnegative
+  `price`, and `currency` restricted to `USD` or `EUR`. PATCH can update individual
+  name translations. DELETE returns 204; missing IDs return 404.
+- Create drafts with a customer ID and 1-100 `products` selections. Each selection
+  has `productId`, positive `quantity` (default 1, up to six decimal places), and
+  optional `taxRate` percentage (default 0, up to two decimal places). Names,
+  prices, and currencies are copied from the catalog on creation/replacement;
+  clients cannot override them in the selection. `dueDate` and `notes` are optional
+  and nullable. Invoice currency comes from the selected products; mixed currencies
+  are rejected with 400. No currency conversion is performed.
+- Invoice responses include a denormalized `products` list: bilingual `name`,
+  `price`, `currency`, source `productId`, quantity, tax rate, and computed amounts.
+  These snapshots are independent even while the invoice is a draft. Updating or
+  deleting a catalog entry never changes existing invoice products. The source
+  product ID is retained after deletion, without a foreign key to the catalog.
+- Existing clients can still send `items` with bilingual `description`, `unitPrice`,
+  quantity, and optional tax rate instead of `products` (never both). These custom
+  products use the settings currency and have null source product IDs. The `items`
+  response is retained as a compatibility representation of the same snapshots.
 - All prices/payments use major units with at most two decimals. Line subtotals
   and taxes round half up to minor units; invoice totals sum the rounded lines.
   A line or invoice may not exceed 1,000,000,000,000 minor units. Optional input
   `total` is verified against the calculated amount. Responses include line and
   invoice subtotals, taxes, totals, `paidTotal`, and `outstandingTotal`.
-- Invoice PATCH replaces `items` if supplied and updates other supplied fields.
+- Invoice PATCH replaces `products` (or legacy `items`) if supplied and updates other supplied fields.
+  Replacing products fetches fresh catalog values and may change draft currency;
+  metadata-only edits preserve the existing product snapshots and currency.
   Only drafts can be edited. Concurrent edits use a revision check and guarded
   D1 batches; a conflicting write returns 409 without changing the items.
 - Issuing allocates a unique ten-digit, zero-padded number, sets today's UTC
@@ -173,3 +193,24 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
 local D1 storage through Miniflare. It requires no Cloudflare account and never
 accesses production. The endpoint tests cover persistence, rounding, snapshots,
 concurrent writes, payment balance checks, rollback, and OpenAPI generation.
+
+Example product creation (`POST /api/products`):
+
+```json
+{
+  "name": { "bg": "Консултация", "en": "Consulting" },
+  "price": 100,
+  "currency": "EUR"
+}
+```
+
+Example invoice creation (`POST /api/invoices`):
+
+```json
+{
+  "customerId": "<customer-id>",
+  "products": [
+    { "productId": "<product-id>", "quantity": 2, "taxRate": 20 }
+  ]
+}
+```

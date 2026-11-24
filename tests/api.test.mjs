@@ -12,7 +12,7 @@ async function request(path, method = 'GET', body, expected = 200) {
   const response = await mf.dispatchFetch(`http://localhost${path}`, {
     method, ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   });
-  const data = await response.json();
+  const data = response.status === 204 ? null : await response.json();
   assert.equal(response.status, expected, `${method} ${path}: ${JSON.stringify(data)}`);
   return data;
 }
@@ -23,7 +23,7 @@ async function invoice(customerId, items = [line()], extra = {}) {
   return (await request('/api/invoices', 'POST', { customerId, items, ...extra }, 201)).invoice;
 }
 async function reset() {
-  await db.batch(['payments', 'invoice_items', 'invoices', 'customers', 'settings'].map(table => db.prepare(`DELETE FROM ${table}`)));
+  await db.batch(['payments', 'invoice_items', 'invoices', 'customers', 'settings', 'products'].map(table => db.prepare(`DELETE FROM ${table}`)));
   await db.prepare('UPDATE invoice_sequence SET next_number = 1').run();
 }
 before(async () => {
@@ -242,4 +242,104 @@ test('D1 failures roll back invoice creation, item replacement, and number alloc
     await db.prepare('DROP TRIGGER reject_test_issue').run();
   }
   assert.equal((await request(`/api/invoices/${draft.id}/issue`, 'POST')).invoice.invoiceNumber, '0000000001');
+});
+
+async function catalogProduct(price = 12.34, currency = 'EUR') {
+  return (await request('/api/products', 'POST', { name: text, price, currency }, 201)).product;
+}
+
+test('product catalog CRUD persists bilingual names, prices, currencies, and pagination', async () => {
+  await reset();
+  assert.deepEqual((await request('/api/products')).products, []);
+  const p = await catalogProduct();
+  assert.match(p.id, /^[0-9a-f-]{36}$/); assert.equal(p.price, 12.34);
+  assert.deepEqual((await request(`/api/products/${p.id}`)).product, p);
+  assert.equal((await db.prepare('SELECT price_minor FROM products WHERE id = ?').bind(p.id).first()).price_minor, 1234);
+  const edited = (await request(`/api/products/${p.id}`, 'PATCH', { name: { en: 'Updated' }, price: 0, currency: 'USD' })).product;
+  assert.deepEqual(edited.name, { bg: text.bg, en: 'Updated' });
+  assert.equal(edited.price, 0); assert.equal(edited.currency, 'USD');
+  assert.deepEqual((await request(`/api/products/${p.id}`)).product, edited);
+  await catalogProduct();
+  const list = await request('/api/products?limit=1&offset=1');
+  assert.equal(list.total, 2); assert.equal(list.products.length, 1);
+  await request(`/api/products/${p.id}`, 'DELETE', undefined, 204);
+  await request(`/api/products/${p.id}`, 'GET', undefined, 404);
+  await request(`/api/products/${p.id}`, 'PATCH', { price: 1 }, 404);
+  await request(`/api/products/${p.id}`, 'DELETE', undefined, 404);
+});
+
+test('invoices snapshot catalog products and retain them after catalog changes and deletion', async () => {
+  await reset(); await request('/api/settings', 'PUT', settings);
+  const c = await customer(), p = await catalogProduct(12.34, 'USD');
+  const input = { customerId: c.id, products: [{ productId: p.id, quantity: 2, taxRate: 20 }] };
+  const draft = (await request('/api/invoices', 'POST', input, 201)).invoice;
+  assert.equal(draft.currency, 'USD'); assert.equal(draft.subtotal, 24.68); assert.equal(draft.tax, 4.94); assert.equal(draft.total, 29.62);
+  const snapshot = draft.products[0];
+  assert.equal(snapshot.productId, p.id); assert.deepEqual(snapshot.name, p.name);
+  assert.equal(snapshot.price, 12.34); assert.equal(snapshot.currency, 'USD'); assert.equal(snapshot.quantity, 2);
+  assert.equal(draft.items[0].unitPrice, snapshot.price);
+  await request(`/api/products/${p.id}`, 'PATCH', { name: { bg: 'Ново име', en: 'New name' }, price: 99, currency: 'EUR' });
+  assert.deepEqual((await request(`/api/invoices/${draft.id}`)).invoice.products, draft.products);
+  const metadataEdit = (await request(`/api/invoices/${draft.id}`, 'PATCH', { notes: 'Keep original product' })).invoice;
+  assert.deepEqual(metadataEdit.products, draft.products); assert.equal(metadataEdit.currency, 'USD');
+  await request(`/api/products/${p.id}`, 'DELETE', undefined, 204);
+  const issued = (await request(`/api/invoices/${draft.id}/issue`, 'POST')).invoice;
+  assert.deepEqual(issued.products, draft.products);
+  assert.equal(issued.total, 29.62);
+  assert.deepEqual((await request('/api/invoices')).invoices[0].products, draft.products);
+  await request(`/api/invoices/${draft.id}/payments`, 'POST', { amount: 29.62 }, 201);
+  assert.deepEqual((await request(`/api/invoices/${draft.id}`)).invoice.products, draft.products);
+  await request('/api/invoices', 'POST', input, 404);
+});
+
+test('draft product replacement refreshes snapshots and currency without repricing metadata edits', async () => {
+  await reset(); await request('/api/settings', 'PUT', settings);
+  const c = await customer(), eur = await catalogProduct(10), usd = await catalogProduct(20, 'USD');
+  const draft = (await request('/api/invoices', 'POST', { customerId: c.id, products: [{ productId: eur.id }] }, 201)).invoice;
+  assert.equal(draft.products[0].quantity, 1); assert.equal(draft.total, 10);
+  await request(`/api/products/${eur.id}`, 'PATCH', { price: 15 });
+  const refreshed = (await request(`/api/invoices/${draft.id}`, 'PATCH', { products: [{ productId: eur.id }] })).invoice;
+  assert.equal(refreshed.total, 15); assert.equal(refreshed.products.length, 1);
+  const replaced = (await request(`/api/invoices/${draft.id}`, 'PATCH', { products: [{ productId: usd.id, quantity: 3 }] })).invoice;
+  assert.equal(replaced.currency, 'USD'); assert.equal(replaced.total, 60); assert.equal(replaced.products[0].productId, usd.id);
+  const count = await db.prepare('SELECT COUNT(*) AS n FROM invoice_items WHERE invoice_id = ?').bind(draft.id).first();
+  assert.equal(count.n, 1);
+  await request(`/api/invoices/${draft.id}`, 'PATCH', { products: [{ productId: 'missing' }] }, 404);
+  await request(`/api/invoices/${draft.id}`, 'PATCH', { products: [{ productId: eur.id }, { productId: usd.id }] }, 400);
+  assert.deepEqual((await request(`/api/invoices/${draft.id}`)).invoice, replaced);
+  await request(`/api/invoices/${draft.id}/issue`, 'POST');
+  await request(`/api/invoices/${draft.id}`, 'PATCH', { products: [{ productId: eur.id }] }, 409);
+});
+
+test('product inputs reject invalid prices, currencies, translations, overrides, and mixed invoices', async () => {
+  await reset(); await request('/api/settings', 'PUT', settings);
+  const c = await customer(), p = await catalogProduct(), usd = await catalogProduct(1, 'USD');
+  await request('/api/invoices', 'POST', { customerId: c.id, products: [{ productId: p.id }, { productId: usd.id }] }, 400);
+  await request('/api/invoices', 'POST', { customerId: c.id, products: [{ productId: 'missing' }] }, 404);
+  for (const body of [
+    { name: { en: 'Only English' }, price: 1, currency: 'EUR' },
+    { name: { bg: '   ', en: 'Name' }, price: 1, currency: 'EUR' },
+    { name: text, price: -1, currency: 'EUR' },
+    { name: text, price: 1.001, currency: 'EUR' },
+    { name: text, price: 1, currency: 'GBP' },
+    { name: text, price: 1 },
+  ]) {
+    await request('/api/products', 'POST', body, 400);
+  }
+  for (const body of [{}, { name: {} }, { price: -1 }, { currency: 'GBP' }, { name: { en: '' } }]) {
+    await request(`/api/products/${p.id}`, 'PATCH', body, 400);
+  }
+  for (const body of [
+    { customerId: c.id },
+    { customerId: c.id, products: [] },
+    { customerId: c.id, products: [{ productId: p.id, quantity: 0 }] },
+    { customerId: c.id, products: [{ productId: p.id, price: 0 }] },
+    { customerId: c.id, products: [{ productId: p.id }], items: [line()] },
+  ]) {
+    await request('/api/invoices', 'POST', body, 400);
+  }
+  const spec = await request('/openapi.json');
+  assert(spec.paths['/api/products'].get); assert(spec.paths['/api/products'].post);
+  assert(spec.paths['/api/products/{id}'].get); assert(spec.paths['/api/products/{id}'].patch);
+  assert(spec.paths['/api/products/{id}'].delete.responses['204']);
 });

@@ -10,6 +10,15 @@ export const Money = z.number().min(0).max(MAX_MINOR / 100).refine(
 const Text = z.string().trim().min(1).max(2000);
 export const BilingualText = z.object({ bg: Text, en: Text });
 export const BilingualAddress = z.object({ bg: Text.nullish(), en: Text.nullish() });
+export const ProductCurrency = z.enum(["USD", "EUR"]);
+export const ProductInput = z.object({ name: BilingualText, price: Money, currency: ProductCurrency });
+export const Product = ProductInput.extend({
+  id: z.string(), createdAt: z.string(), updatedAt: z.string(),
+});
+export const ProductPatch = z.object({
+  name: BilingualText.partial().refine(value => Object.keys(value).length > 0).optional(),
+  price: Money.optional(), currency: ProductCurrency.optional(),
+}).refine(value => Object.keys(value).length > 0, "Provide at least one field");
 export const CustomerInput = z.object({
   name: BilingualText,
   address: BilingualAddress.optional(),
@@ -32,19 +41,36 @@ export const InvoiceItemInput = z.object({
   unitPrice: Money,
   taxRate: z.number().min(0).max(100).multipleOf(0.01).default(0),
 });
-export const InvoiceInput = z.object({
+export const InvoiceProductInput = z.object({
+  productId: z.string().min(1),
+  quantity: InvoiceItemInput.shape.quantity.default(1),
+  taxRate: InvoiceItemInput.shape.taxRate,
+}).strict();
+const InvoiceFields = z.object({
   customerId: z.string().min(1),
   // Accepted for existing clients, but verified against server-calculated totals.
   total: Money.optional(),
-  items: z.array(InvoiceItemInput).min(1).max(100),
+  products: z.array(InvoiceProductInput).min(1).max(100).optional(),
+  // Compatibility for clients that create custom line items without a catalog.
+  items: z.array(InvoiceItemInput).min(1).max(100).optional(),
   dueDate: z.iso.date().nullish(),
   notes: z.string().max(10000).nullish(),
 });
-export const InvoicePatch = InvoiceInput.partial().refine(
-  value => Object.keys(value).length > 0, "Provide at least one field",
+export const InvoiceInput = InvoiceFields.refine(
+  value => Boolean(value.products) !== Boolean(value.items), "Provide products or items, but not both",
 );
+export const InvoicePatch = InvoiceFields.partial().refine(
+  value => Object.keys(value).length > 0, "Provide at least one field",
+).refine(value => !(value.products && value.items), "Provide products or items, but not both");
 export const InvoiceItem = InvoiceItemInput.extend({
   id: z.string(), position: z.number().int(), subtotal: Money, tax: Money, total: Money,
+  productId: z.string().nullable(), currency: z.string(),
+});
+export const InvoiceProduct = z.object({
+  id: z.string(), productId: z.string().nullable(), position: z.number().int(),
+  name: BilingualText, price: Money, currency: z.string(),
+  quantity: InvoiceItemInput.shape.quantity, taxRate: InvoiceItemInput.shape.taxRate,
+  subtotal: Money, tax: Money, total: Money,
 });
 const PartySnapshot = z.object({
   name: BilingualText, address: BilingualAddress, number: z.string().nullable(),
@@ -55,6 +81,7 @@ export const Invoice = z.object({
   issueDate: z.string().nullable(), dueDate: z.string().nullable(), notes: z.string().nullable(),
   subtotal: Money, tax: Money, total: Money, paidTotal: Money, outstandingTotal: Money,
   items: z.array(InvoiceItem),
+  products: z.array(InvoiceProduct),
   customer: PartySnapshot.nullable(), company: PartySnapshot.nullable(),
   createdAt: z.string(), updatedAt: z.string(), revision: z.number().int(),
 });

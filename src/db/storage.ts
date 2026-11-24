@@ -1,12 +1,11 @@
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
-import { MAX_MINOR, type CustomerInput, type CustomerPatch, type InvoiceInput, type InvoicePatch, type PaymentInput, type Settings } from "../types";
-import type { CustomerRow, SettingsRow, InvoiceRow, InvoiceItemRow, PaymentRow } from "./models";
+import { MAX_MINOR, type CustomerInput, type CustomerPatch, type InvoiceItemInput, type InvoiceInput, type InvoicePatch, type InvoiceProductInput, type PaymentInput, type Settings } from "../types";
+import type { CustomerRow, SettingsRow, InvoiceRow, InvoiceItemRow, PaymentRow, ProductRow } from "./models";
+import { fail } from "./errors";
 
 type InvoiceWithPaid = InvoiceRow & { paid_minor: number };
-export function fail(status: 400 | 404 | 409, message: string): never {
-  throw new HTTPException(status, { message });
-}
+type SnapshotItem = z.infer<typeof InvoiceItemInput> & { productId: string | null; currency: string };
 const minor = (value: number) => Math.round(value * 100);
 const major = (value: number) => value / 100;
 const customerResult = (r: CustomerRow) => ({
@@ -40,7 +39,15 @@ function invoiceResult(r: InvoiceWithPaid, items: InvoiceItemRow[]) {
     },
     items: items.map(item => ({
       id: item.id, position: item.position, description: { bg: item.description_bg, en: item.description_en },
+      productId: item.product_id, currency: item.currency,
       quantity: item.quantity, unitPrice: major(item.unit_price_minor), taxRate: item.tax_rate,
+      subtotal: major(item.subtotal_minor), tax: major(item.tax_minor), total: major(item.total_minor),
+    })),
+    products: items.map(item => ({
+      id: item.id, productId: item.product_id, position: item.position,
+      name: { bg: item.description_bg, en: item.description_en },
+      price: major(item.unit_price_minor), currency: item.currency,
+      quantity: item.quantity, taxRate: item.tax_rate,
       subtotal: major(item.subtotal_minor), tax: major(item.tax_minor), total: major(item.total_minor),
     })),
   };
@@ -114,7 +121,23 @@ export async function listInvoices(db: D1Database, limit: number, offset: number
   return { invoices: (invoices!.results as unknown as InvoiceWithPaid[]).map(r => invoiceResult(r, grouped.get(r.id) ?? [])),
     total: Number(count!.results[0]!.total), limit, offset };
 }
-function calculate(items: z.infer<typeof InvoiceInput>['items'], expectedTotal?: number) {
+async function resolveProducts(db: D1Database, selections: z.infer<typeof InvoiceProductInput>[]): Promise<SnapshotItem[]> {
+  // One query gives all selected products a consistent catalog snapshot, even if
+  // catalog entries are edited concurrently. Stored invoice rows never join back.
+  const { results } = await db.prepare('SELECT * FROM products WHERE id IN (SELECT value FROM json_each(?))')
+    .bind(JSON.stringify(selections.map(selection => selection.productId))).all<ProductRow>();
+  const products = new Map(results.map(product => [product.id, product]));
+  const items = selections.map(selection => {
+    const product = products.get(selection.productId);
+    if (!product) fail(404, `Product not found: ${selection.productId}`);
+    return { productId: product.id, description: { bg: product.name_bg, en: product.name_en },
+      unitPrice: major(product.price_minor), currency: product.currency,
+      quantity: selection.quantity, taxRate: selection.taxRate };
+  });
+  if (new Set(items.map(item => item.currency)).size !== 1) fail(400, 'All invoice products must use the same currency');
+  return items;
+}
+function calculate(items: SnapshotItem[], expectedTotal?: number) {
   const lines = items.map(item => {
     const unitPrice = minor(item.unitPrice);
     const quantity = BigInt(Math.round(item.quantity * 1_000_000));
@@ -132,23 +155,26 @@ function calculate(items: z.infer<typeof InvoiceInput>['items'], expectedTotal?:
 }
 function itemStatements(db: D1Database, id: string, token: string, lines: ReturnType<typeof calculate>['lines']) {
   return lines.map((line, position) => db.prepare(`INSERT INTO invoice_items
-    (id, invoice_id, position, description_bg, description_en, quantity, unit_price_minor, tax_rate, subtotal_minor, tax_minor, total_minor)
-    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS
+    (id, invoice_id, position, description_bg, description_en, quantity, unit_price_minor, tax_rate, subtotal_minor, tax_minor, total_minor, product_id, currency)
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS
     (SELECT 1 FROM invoices WHERE id = ? AND mutation_token = ? AND status = 'draft')`)
     .bind(line.id, id, position, line.description.bg, line.description.en, line.quantity,
-      line.unitPrice, line.taxRate, line.subtotal, line.tax, line.total, id, token));
+      line.unitPrice, line.taxRate, line.subtotal, line.tax, line.total, line.productId, line.currency, id, token));
 }
 export async function createInvoice(db: D1Database, input: z.infer<typeof InvoiceInput>) {
-  const amounts = calculate(input.items, input.total);
   const settings = await getSettings(db).catch(error => {
     if (error instanceof HTTPException && error.status === 404) fail(409, 'Configure company settings before creating invoices');
     throw error;
   });
+  const items = input.products ? await resolveProducts(db, input.products) : input.items!.map(item => ({
+    ...item, productId: null, currency: settings.currency,
+  }));
+  const amounts = calculate(items, input.total);
   if (!await db.prepare('SELECT id FROM customers WHERE id = ?').bind(input.customerId).first()) fail(404, 'Customer not found');
   const id = crypto.randomUUID(), token = crypto.randomUUID();
   await db.batch<Record<string, unknown>>([
     db.prepare(`INSERT INTO invoices (id, customer_id, currency, due_date, notes, subtotal_minor, tax_minor, total_minor, mutation_token)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, input.customerId, settings.currency,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, input.customerId, items[0]!.currency,
       input.dueDate ?? null, input.notes ?? null, amounts.subtotal, amounts.tax, amounts.total, token),
     ...itemStatements(db, id, token, amounts.lines),
   ]);
@@ -158,15 +184,19 @@ export async function editInvoice(db: D1Database, id: string, input: z.infer<typ
   const current = await getInvoice(db, id);
   if (current.status !== 'draft') fail(409, 'Only draft invoices can be edited');
   if (input.customerId && !await db.prepare('SELECT id FROM customers WHERE id = ?').bind(input.customerId).first()) fail(404, 'Customer not found');
-  const amounts = calculate(input.items ?? current.items, input.total);
+  const items = input.products ? await resolveProducts(db, input.products)
+    : input.items ? input.items.map(item => ({ ...item, productId: null, currency: current.currency }))
+    : current.items;
+  const amounts = calculate(items, input.total);
   const token = crypto.randomUUID();
-  const statements = [db.prepare(`UPDATE invoices SET customer_id = ?, due_date = ?, notes = ?,
+  const statements = [db.prepare(`UPDATE invoices SET customer_id = ?, due_date = ?, notes = ?, currency = ?,
     subtotal_minor = ?, tax_minor = ?, total_minor = ?, mutation_token = ?, revision = revision + 1, updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND status = 'draft' AND revision = ?`).bind(
     input.customerId ?? current.customerId, input.dueDate === undefined ? current.dueDate : input.dueDate,
-    input.notes === undefined ? current.notes : input.notes, amounts.subtotal, amounts.tax, amounts.total, token, id, current.revision,
+    input.notes === undefined ? current.notes : input.notes, items[0]!.currency,
+    amounts.subtotal, amounts.tax, amounts.total, token, id, current.revision,
   )];
-  if (input.items) {
+  if (input.items || input.products) {
     statements.push(db.prepare(`DELETE FROM invoice_items WHERE invoice_id = ? AND EXISTS
       (SELECT 1 FROM invoices WHERE id = ? AND mutation_token = ? AND status = 'draft')`).bind(id, id, token));
     statements.push(...itemStatements(db, id, token, amounts.lines));
