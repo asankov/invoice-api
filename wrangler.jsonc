@@ -11,6 +11,13 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	// Local development only. Production must authenticate through Cloudflare Access.
+	"access": {
+		"dev": {
+			"aud": "invoice-api-local",
+			"identity": { "email": "developer@example.invalid" }
+		}
+	},
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

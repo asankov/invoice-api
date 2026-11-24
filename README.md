@@ -214,3 +214,36 @@ Example invoice creation (`POST /api/invoices`):
   ]
 }
 ```
+
+## Login and Cloudflare Access
+
+Every Worker route requires Cloudflare Access authentication, including `/docs`,
+`/openapi.json`, every API method, and unknown paths. Requests without the runtime's
+trusted Access context receive HTTP 403 before any handler or D1 query runs.
+A caller-supplied JWT header, user email header, or cookie alone cannot bypass this
+check. Cloudflare provides the hosted login page and session handling; this app
+stores no passwords or login sessions.
+
+Production setup (required before deploying the protected Worker):
+
+1. Enable Cloudflare Zero Trust/Access for the deployment account in the dashboard.
+2. Go to **Workers & Pages → api → Access → Protect this Worker behind Access**.
+3. Choose **All traffic**, covering production and previews across every associated
+   hostname and route. Protect the entire Worker rather than only `/docs` or one
+   hostname, so direct API requests and alternate URLs also require login.
+4. Configure an allow policy for the intended users (Cloudflare account members or
+   explicitly allowed emails), then apply Access. Do not add public path overrides
+   or bypass policies. Review existing hostname/path applications too, since those
+   can take precedence over Worker-level Access.
+5. Verify an unsigned browser request opens Cloudflare's login page and that
+   signing in as an allowed user reaches `/docs`. Check `/api/settings` and a
+   preview URL while signed out as well.
+
+This is Cloudflare account configuration, not a deployable Wrangler setting.
+`access.dev` in `wrangler.jsonc` only simulates an authenticated developer during
+local development; it does not enable production Access or bypass production
+checks. Remove that local block to test anonymous requests. Integration tests use
+separate authenticated and anonymous Workers and verify both access decisions.
+
+Cloudflare setup instructions:
+https://developers.cloudflare.com/workers/configuration/cloudflare-access/

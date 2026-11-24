@@ -14,7 +14,7 @@
     "db:migrate:local": "wrangler d1 migrations apply invoicer --local",
     "db:migrate:remote": "wrangler d1 migrations apply invoicer --remote",
     "test:schema": "python3 -B -m unittest discover -s tests -p 'test_*.py' -v",
-    "test:api": "node --test tests/api.test.mjs"
+    "test:api": "node --test tests/api.test.mjs tests/access.test.mjs"
   },
   "dependencies": {
     "chanfana": "^3.3.0",

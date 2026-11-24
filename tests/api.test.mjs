@@ -29,6 +29,7 @@ async function reset() {
 before(async () => {
   const bundle = await build({ entryPoints: ['src/index.ts'], bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2024' });
   mf = new Miniflare({ workers: [{ config: { name: 'api-test', compatibilityDate: '2026-11-04',
+    access: { dev: { aud: 'invoice-api-test', identity: { email: 'test@example.invalid' } } },
     manifest: { mainModule: 'index.js', modules: { 'index.js': { type: 'esm', contents: bundle.outputFiles[0].text } } },
     env: { invoicer: { type: 'd1', id: 'test-invoices' } },
   } }], log: new Log(LogLevel.ERROR) });

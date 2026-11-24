@@ -25,6 +25,17 @@ import { DeleteProduct } from "./endpoints/DeleteProduct";
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
 
+// Trust the runtime's Access context, never a caller-supplied header or cookie.
+// Register before every route, including Swagger, OpenAPI, and fallback pages.
+app.use("*", async (c, next) => {
+  if (!(c.executionCtx as ExecutionContext).access) {
+    return c.json({ error: "Cloudflare Access login required" }, 403, {
+      "Cache-Control": "no-store",
+    });
+  }
+  await next();
+});
+
 app.onError((error, c) => {
   if (error instanceof HTTPException) return c.json({ error: error.message }, error.status);
   console.error(error);
