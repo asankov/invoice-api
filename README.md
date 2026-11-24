@@ -39,6 +39,9 @@ across reloads regardless of those labels.
 `.github/workflows/ci.yml` runs lint, a type-checked Worker build, schema and endpoint tests,
 and local D1 migrations on every push and pull request. Run the same checks locally
 with `npm run lint`, `npm run build`, `npm test`, and `npm run db:migrate:local`.
+Lint includes ESLint and Prettier formatting checks. Run `npm run lint:fix` to fix
+lint violations and format the source and JavaScript tests; `npm run format`
+only applies formatting. ESLint requires braces and separate variable declarations.
 The checks use Node.js 24 and Python 3.14; the Python tests have no pip dependencies.
 
 `.github/workflows/deploy.yml` runs on pushes to `main`. It reuses CI as a required

@@ -1,15 +1,22 @@
-import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
-import { type AppContext, ErrorResponses, Customer, CustomerPatch, IdParams } from "../types";
-import { editCustomer } from "../db/storage";
+import { OpenAPIRoute } from 'chanfana';
+import { z } from 'zod';
+import { type AppContext, ErrorResponses, Customer, CustomerPatch, IdParams } from '../types';
+import { editCustomer } from '../db/storage';
 
 export class EditCustomer extends OpenAPIRoute {
   schema = {
-    tags: ["Customers"], summary: "Edit a customer",
-    request: { params: IdParams, body: { content: { "application/json": { schema: CustomerPatch } } } },
+    tags: ['Customers'],
+    summary: 'Edit a customer',
+    request: {
+      params: IdParams,
+      body: { content: { 'application/json': { schema: CustomerPatch } } },
+    },
     responses: {
       ...ErrorResponses,
-      "200": { description: "Edit a customer", content: { "application/json": { schema: z.object({ customer: Customer }) } } },
+      '200': {
+        description: 'Edit a customer',
+        content: { 'application/json': { schema: z.object({ customer: Customer }) } },
+      },
     },
   };
 

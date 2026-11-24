@@ -1,14 +1,15 @@
-import { OpenAPIRoute } from "chanfana";
-import { type AppContext, ErrorResponses, IdParams } from "../types";
-import { deleteProduct } from "../db/products";
+import { OpenAPIRoute } from 'chanfana';
+import { type AppContext, ErrorResponses, IdParams } from '../types';
+import { deleteProduct } from '../db/products';
 
 export class DeleteProduct extends OpenAPIRoute {
   schema = {
-    tags: ["Products"], summary: "Delete a catalog product",
+    tags: ['Products'],
+    summary: 'Delete a catalog product',
     request: { params: IdParams },
     responses: {
       ...ErrorResponses,
-      "204": { description: "Product deleted; invoice snapshots are retained" },
+      '204': { description: 'Product deleted; invoice snapshots are retained' },
     },
   };
 

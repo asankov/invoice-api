@@ -1,15 +1,28 @@
-import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
-import { type AppContext, ErrorResponses, Product, ListQuery } from "../types";
-import { listProducts } from "../db/products";
+import { OpenAPIRoute } from 'chanfana';
+import { z } from 'zod';
+import { type AppContext, ErrorResponses, Product, ListQuery } from '../types';
+import { listProducts } from '../db/products';
 
 export class GetProducts extends OpenAPIRoute {
   schema = {
-    tags: ["Products"], summary: "List products",
+    tags: ['Products'],
+    summary: 'List products',
     request: { query: ListQuery },
     responses: {
       ...ErrorResponses,
-      "200": { description: "List products", content: { "application/json": { schema: z.object({ products: Product.array(), total: z.number(), limit: z.number(), offset: z.number() }) } } },
+      '200': {
+        description: 'List products',
+        content: {
+          'application/json': {
+            schema: z.object({
+              products: Product.array(),
+              total: z.number(),
+              limit: z.number(),
+              offset: z.number(),
+            }),
+          },
+        },
+      },
     },
   };
 

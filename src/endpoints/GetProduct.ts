@@ -1,15 +1,19 @@
-import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
-import { type AppContext, ErrorResponses, Product, IdParams } from "../types";
-import { getProduct } from "../db/products";
+import { OpenAPIRoute } from 'chanfana';
+import { z } from 'zod';
+import { type AppContext, ErrorResponses, Product, IdParams } from '../types';
+import { getProduct } from '../db/products';
 
 export class GetProduct extends OpenAPIRoute {
   schema = {
-    tags: ["Products"], summary: "Get a product",
+    tags: ['Products'],
+    summary: 'Get a product',
     request: { params: IdParams },
     responses: {
       ...ErrorResponses,
-      "200": { description: "Get a product", content: { "application/json": { schema: z.object({ product: Product }) } } },
+      '200': {
+        description: 'Get a product',
+        content: { 'application/json': { schema: z.object({ product: Product }) } },
+      },
     },
   };
 

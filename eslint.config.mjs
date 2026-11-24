@@ -5,4 +5,8 @@ import tseslint from 'typescript-eslint';
 export default defineConfig({
   files: ['src/**/*.ts'],
   extends: [js.configs.recommended, tseslint.configs.recommended],
+  rules: {
+    curly: ['error', 'all'],
+    'one-var': ['error', 'never'],
+  },
 });

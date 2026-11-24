@@ -1,15 +1,19 @@
-import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
-import { type AppContext, ErrorResponses, Settings } from "../types";
-import { updateSettings } from "../db/storage";
+import { OpenAPIRoute } from 'chanfana';
+import { z } from 'zod';
+import { type AppContext, ErrorResponses, Settings } from '../types';
+import { updateSettings } from '../db/storage';
 
 export class UpdateSettings extends OpenAPIRoute {
   schema = {
-    tags: ["Settings"], summary: "Replace company settings",
-    request: { body: { content: { "application/json": { schema: Settings } } } },
+    tags: ['Settings'],
+    summary: 'Replace company settings',
+    request: { body: { content: { 'application/json': { schema: Settings } } } },
     responses: {
       ...ErrorResponses,
-      "200": { description: "Replace company settings", content: { "application/json": { schema: z.object({ settings: Settings }) } } },
+      '200': {
+        description: 'Replace company settings',
+        content: { 'application/json': { schema: z.object({ settings: Settings }) } },
+      },
     },
   };
 

@@ -1,14 +1,18 @@
-import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
-import { type AppContext, ErrorResponses, Dashboard } from "../types";
-import { getDashboard } from "../db/storage";
+import { OpenAPIRoute } from 'chanfana';
+import { z } from 'zod';
+import { type AppContext, ErrorResponses, Dashboard } from '../types';
+import { getDashboard } from '../db/storage';
 
 export class GetDashboard extends OpenAPIRoute {
   schema = {
-    tags: ["Dashboard"], summary: "Get dashboard",
+    tags: ['Dashboard'],
+    summary: 'Get dashboard',
     responses: {
       ...ErrorResponses,
-      "200": { description: "Get dashboard", content: { "application/json": { schema: z.object({ dashboard: Dashboard }) } } },
+      '200': {
+        description: 'Get dashboard',
+        content: { 'application/json': { schema: z.object({ dashboard: Dashboard }) } },
+      },
     },
   };
 

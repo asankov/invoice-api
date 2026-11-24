@@ -1,15 +1,19 @@
-import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
-import { type AppContext, ErrorResponses, Invoice, IdParams } from "../types";
-import { issueInvoice } from "../db/storage";
+import { OpenAPIRoute } from 'chanfana';
+import { z } from 'zod';
+import { type AppContext, ErrorResponses, Invoice, IdParams } from '../types';
+import { issueInvoice } from '../db/storage';
 
 export class IssueInvoice extends OpenAPIRoute {
   schema = {
-    tags: ["Invoices"], summary: "Issue an invoice",
+    tags: ['Invoices'],
+    summary: 'Issue an invoice',
     request: { params: IdParams },
     responses: {
       ...ErrorResponses,
-      "200": { description: "Issue an invoice", content: { "application/json": { schema: z.object({ invoice: Invoice }) } } },
+      '200': {
+        description: 'Issue an invoice',
+        content: { 'application/json': { schema: z.object({ invoice: Invoice }) } },
+      },
     },
   };
 
