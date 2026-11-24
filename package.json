@@ -4,15 +4,17 @@
   "private": true,
   "scripts": {
     "build": "tsc --noEmit && wrangler deploy --dry-run --outdir dist",
-    "test": "python3 -B -m unittest discover -s tests -p 'test_*.py' -v",
+    "test": "npm run test:schema && npm run test:api",
     "lint": "eslint src --max-warnings 0",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "cf-typegen": "wrangler types",
-    "db:migration:create": "wrangler d1 migrations create prod-d1-tutorial",
-    "db:migrate:local": "wrangler d1 migrations apply prod-d1-tutorial --local",
-    "db:migrate:remote": "wrangler d1 migrations apply prod-d1-tutorial --remote"
+    "db:migration:create": "wrangler d1 migrations create invoicer",
+    "db:migrate:local": "wrangler d1 migrations apply invoicer --local",
+    "db:migrate:remote": "wrangler d1 migrations apply invoicer --remote",
+    "test:schema": "python3 -B -m unittest discover -s tests -p 'test_*.py' -v",
+    "test:api": "node --test tests/api.test.mjs"
   },
   "dependencies": {
     "chanfana": "^3.3.0",
@@ -22,7 +24,9 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@types/node": "^25.9.9",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
+    "miniflare": "^5.20261104.0-beta",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
     "wrangler": "^4.158.0"

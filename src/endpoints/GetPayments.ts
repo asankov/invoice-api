@@ -1,27 +1,20 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Payment } from "../types";
+import { type AppContext, ErrorResponses, Payment, IdParams } from "../types";
+import { getPayments } from "../db/storage";
 
-// Dummy endpoint: responses are not persisted.
 export class GetPayments extends OpenAPIRoute {
   schema = {
-    tags: ["Payments"],
-    summary: "Get invoice payments",
-    request: {
-      params: z.object({ id: z.string() }),
-    },
+    tags: ["Payments"], summary: "List invoice payments",
+    request: { params: IdParams },
     responses: {
-      "200": {
-        description: "Get invoice payments (placeholder)",
-        content: {
-          "application/json": { schema: z.object({ payments: Payment.array() }) },
-        },
-      },
+      ...ErrorResponses,
+      "200": { description: "List invoice payments", content: { "application/json": { schema: z.object({ payments: Payment.array() }) } } },
     },
   };
 
   async handle(c: AppContext) {
     const data = await this.getValidatedData<typeof this.schema>();
-    return c.json({ payments: [{ id: "payment-1", invoiceId: data.params.id, amount: 25 }] }, 200);
+    return c.json({ payments: await getPayments(c.env.invoicer, data.params.id) });
   }
 }

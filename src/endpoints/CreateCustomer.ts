@@ -1,46 +1,20 @@
 import { OpenAPIRoute } from "chanfana";
-import { AppContext, Customer } from "../types";
 import { z } from "zod";
+import { type AppContext, ErrorResponses, Customer, CustomerInput } from "../types";
+import { createCustomer } from "../db/storage";
 
 export class CreateCustomer extends OpenAPIRoute {
   schema = {
-    tags: ["Customers"],
-    summary: "Create a new Customer",
-    request: {
-      body: {
-        content: {
-          "application/json": {
-            schema: Customer,
-          },
-        },
-      },
-    },
+    tags: ["Customers"], summary: "Create a customer",
+    request: { body: { content: { "application/json": { schema: CustomerInput } } } },
     responses: {
-      "201": {
-        description: "Returns the created customer",
-        content: {
-          "application/json": {
-            schema: z.object({
-              customer: Customer,
-            })
-          }
-        },
-      }
-    }
-  }
+      ...ErrorResponses,
+      "201": { description: "Create a customer", content: { "application/json": { schema: z.object({ customer: Customer }) } } },
+    },
+  };
 
   async handle(c: AppContext) {
     const data = await this.getValidatedData<typeof this.schema>();
-
-    const customer = data.body;
-
-    if (!customer) {
-      return c.json(
-        { error: "Invalid customer data" },
-        400
-      );
-    }
-
-    return c.json({ customer }, 201)
+    return c.json({ customer: await createCustomer(c.env.invoicer, data.body) }, 201);
   }
 }

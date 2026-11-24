@@ -1,41 +1,20 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Customer } from "../types";
+import { type AppContext, ErrorResponses, Customer, ListQuery } from "../types";
+import { listCustomers } from "../db/storage";
 
 export class GetCustomers extends OpenAPIRoute {
-	schema = {
-		tags: ["Customers"],
-		summary: "Get Customers",
-		responses: {
-			"200": {
-				description: "Returns a list of customers",
-				content: {
-					"application/json": {
-						schema: z.object({
-							customers: Customer.array(),
-						}),
-					},
-				},
-			},
-		},
-	};
+  schema = {
+    tags: ["Customers"], summary: "List customers",
+    request: { query: ListQuery },
+    responses: {
+      ...ErrorResponses,
+      "200": { description: "List customers", content: { "application/json": { schema: z.object({ customers: Customer.array(), total: z.number(), limit: z.number(), offset: z.number() }) } } },
+    },
+  };
 
-	async handle(c: AppContext) {
-		return c.json(
-			{
-				customers: [
-					{
-						name: { bg: "Алис Джонсън", en: "Alice Johnson" },
-						address: { bg: "ул. Главна 123", en: "123 Main Street" },
-						number: "+1-202-555-0101",
-					},
-					{
-						name: { bg: "Боб Смит", en: "Bob Smith" },
-						address: { bg: "бул. Дъб 456", en: "456 Oak Avenue" },
-					},
-				],
-			},
-			200,
-		);
-	}
+  async handle(c: AppContext) {
+    const data = await this.getValidatedData<typeof this.schema>();
+    return c.json(await listCustomers(c.env.invoicer, data.query.limit, data.query.offset));
+  }
 }

@@ -1,23 +1,20 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Invoice } from "../types";
+import { type AppContext, ErrorResponses, Invoice, ListQuery } from "../types";
+import { listInvoices } from "../db/storage";
 
-// Dummy endpoint: responses are not persisted.
 export class GetInvoices extends OpenAPIRoute {
   schema = {
-    tags: ["Invoices"],
-    summary: "Get invoices",
+    tags: ["Invoices"], summary: "List invoices",
+    request: { query: ListQuery },
     responses: {
-      "200": {
-        description: "Get invoices (placeholder)",
-        content: {
-          "application/json": { schema: z.object({ invoices: Invoice.array() }) },
-        },
-      },
+      ...ErrorResponses,
+      "200": { description: "List invoices", content: { "application/json": { schema: z.object({ invoices: Invoice.array(), total: z.number(), limit: z.number(), offset: z.number() }) } } },
     },
   };
 
   async handle(c: AppContext) {
-    return c.json({ invoices: [{ id: "invoice-1", customerId: "customer-1", total: 100, items: [{ description: { bg: "Консултация", en: "Consulting" }, quantity: 1, unitPrice: 100 }], status: "draft" }] }, 200);
+    const data = await this.getValidatedData<typeof this.schema>();
+    return c.json(await listInvoices(c.env.invoicer, data.query.limit, data.query.offset));
   }
 }

@@ -1,27 +1,17 @@
 import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
-import { type AppContext } from "../types";
+import { type AppContext, ErrorResponse, IdParams } from "../types";
 
-// Dummy endpoint: responses are not persisted.
 export class GetInvoicePdf extends OpenAPIRoute {
   schema = {
-    tags: ["Invoices"],
-    summary: "Get an invoice PDF placeholder",
-    request: {
-      params: z.object({ id: z.string() }),
-    },
+    tags: ["Invoices"], summary: "Invoice PDF (not implemented)",
+    request: { params: IdParams },
     responses: {
-      "200": {
-        description: "Get an invoice PDF placeholder (placeholder)",
-        content: {
-          "application/json": { schema: z.object({ invoiceId: z.string(), pdf: z.null(), message: z.string() }) },
-        },
-      },
+      "501": { description: "PDF rendering is deferred", content: { "application/json": { schema: ErrorResponse } } },
     },
   };
 
   async handle(c: AppContext) {
-    const data = await this.getValidatedData<typeof this.schema>();
-    return c.json({ invoiceId: data.params.id, pdf: null, message: "PDF generation is not implemented yet" }, 200);
+    await this.getValidatedData<typeof this.schema>();
+    return c.json({ error: "PDF rendering is not implemented" }, 501);
   }
 }

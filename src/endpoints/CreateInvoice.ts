@@ -1,27 +1,20 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Invoice, InvoiceInput } from "../types";
+import { type AppContext, ErrorResponses, Invoice, InvoiceInput } from "../types";
+import { createInvoice } from "../db/storage";
 
-// Dummy endpoint: responses are not persisted.
 export class CreateInvoice extends OpenAPIRoute {
   schema = {
-    tags: ["Invoices"],
-    summary: "Create an invoice",
-    request: {
-      body: { content: { "application/json": { schema: InvoiceInput } } },
-    },
+    tags: ["Invoices"], summary: "Create a draft invoice",
+    request: { body: { content: { "application/json": { schema: InvoiceInput } } } },
     responses: {
-      "201": {
-        description: "Create an invoice (placeholder)",
-        content: {
-          "application/json": { schema: z.object({ invoice: Invoice }) },
-        },
-      },
+      ...ErrorResponses,
+      "201": { description: "Create a draft invoice", content: { "application/json": { schema: z.object({ invoice: Invoice }) } } },
     },
   };
 
   async handle(c: AppContext) {
     const data = await this.getValidatedData<typeof this.schema>();
-    return c.json({ invoice: { ...data.body, id: "invoice-1", status: "draft" } }, 201);
+    return c.json({ invoice: await createInvoice(c.env.invoicer, data.body) }, 201);
   }
 }

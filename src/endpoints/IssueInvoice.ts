@@ -1,27 +1,20 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Invoice } from "../types";
+import { type AppContext, ErrorResponses, Invoice, IdParams } from "../types";
+import { issueInvoice } from "../db/storage";
 
-// Dummy endpoint: responses are not persisted.
 export class IssueInvoice extends OpenAPIRoute {
   schema = {
-    tags: ["Invoices"],
-    summary: "Issue an invoice",
-    request: {
-      params: z.object({ id: z.string() }),
-    },
+    tags: ["Invoices"], summary: "Issue an invoice",
+    request: { params: IdParams },
     responses: {
-      "200": {
-        description: "Issue an invoice (placeholder)",
-        content: {
-          "application/json": { schema: z.object({ invoice: Invoice }) },
-        },
-      },
+      ...ErrorResponses,
+      "200": { description: "Issue an invoice", content: { "application/json": { schema: z.object({ invoice: Invoice }) } } },
     },
   };
 
   async handle(c: AppContext) {
     const data = await this.getValidatedData<typeof this.schema>();
-    return c.json({ invoice: { ...{ id: "invoice-1", customerId: "customer-1", total: 100, items: [{ description: { bg: "Консултация", en: "Consulting" }, quantity: 1, unitPrice: 100 }], status: "draft" }, id: data.params.id, status: "issued" } }, 200);
+    return c.json({ invoice: await issueInvoice(c.env.invoicer, data.params.id) });
   }
 }

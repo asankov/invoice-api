@@ -1,5 +1,6 @@
 import { fromHono } from "chanfana";
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { GetCustomers } from "./endpoints/GetCustomers";
 import { CreateCustomer } from "./endpoints/CreateCustomer";
 import { EditCustomer } from "./endpoints/EditCustomer";
@@ -18,6 +19,12 @@ import { UpdateSettings } from "./endpoints/UpdateSettings";
 
 // Start a Hono app
 const app = new Hono<{ Bindings: Env }>();
+
+app.onError((error, c) => {
+  if (error instanceof HTTPException) return c.json({ error: error.message }, error.status);
+  console.error(error);
+  return c.json({ error: "Internal server error" }, 500);
+});
 
 // Setup OpenAPI registry
 const openapi = fromHono(app, {

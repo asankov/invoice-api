@@ -1,48 +1,20 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, CustomerPatch } from "../types";
+import { type AppContext, ErrorResponses, Customer, CustomerPatch, IdParams } from "../types";
+import { editCustomer } from "../db/storage";
 
 export class EditCustomer extends OpenAPIRoute {
-	schema = {
-	  tags: ["Customers"],
-		summary: "Edit a Customer",
-		request: {
-      body: {
-				content: {
-					"application/json": {
-            schema: CustomerPatch,
-					},
-        },
-			},
-      params: z.object({
-        id: z.string(),
-      }),
-		},
-		responses: {
-			"201": {
-				description: "Returns the edited customer",
-				content: {
-					"application/json": {
-						schema: z.object({
-							customer: CustomerPatch,
-						}),
-					},
-				},
-			},
-		},
-	};
+  schema = {
+    tags: ["Customers"], summary: "Edit a customer",
+    request: { params: IdParams, body: { content: { "application/json": { schema: CustomerPatch } } } },
+    responses: {
+      ...ErrorResponses,
+      "200": { description: "Edit a customer", content: { "application/json": { schema: z.object({ customer: Customer }) } } },
+    },
+  };
 
-	async handle(c: AppContext) {
-		const data = await this.getValidatedData<typeof this.schema>();
-
-		const dataToPatch = data.body;
-
-		return c.json(
-			{
-				success: true,
-        customer: dataToPatch
-			},
-			201,
-		);
-	}
+  async handle(c: AppContext) {
+    const data = await this.getValidatedData<typeof this.schema>();
+    return c.json({ customer: await editCustomer(c.env.invoicer, data.params.id, data.body) });
+  }
 }

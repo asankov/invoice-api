@@ -2,7 +2,7 @@
  * D1 row models matching the complete migrations/ schema.
  * IDs are application-generated UUIDs. Amounts are integer minor units.
  * Dates are YYYY-MM-DD; timestamps are UTC SQLite datetime strings.
- * These storage models are separate from the API's placeholder Zod schemas.
+ * API schemas use camelCase and convert money to major units.
  */
 interface Timestamps {
   created_at: string;
@@ -33,6 +33,8 @@ export type InvoiceStatus = 'draft' | 'issued' | 'paid';
 export interface InvoiceRow extends Timestamps {
   id: string;
   customer_id: string;
+  revision: number;
+  mutation_token: string | null;
   invoice_number: string | null;
   status: InvoiceStatus;
   currency: string;
@@ -62,6 +64,7 @@ export interface InvoiceItemRow extends Timestamps {
   description_en: string;
   quantity: number;
   unit_price_minor: number;
+  tax_rate: number;
   subtotal_minor: number;
   tax_minor: number;
   total_minor: number;

@@ -1,23 +1,18 @@
 import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Settings } from "../types";
+import { type AppContext, ErrorResponses, Settings } from "../types";
+import { getSettings } from "../db/storage";
 
-// Dummy endpoint: responses are not persisted.
 export class GetSettings extends OpenAPIRoute {
   schema = {
-    tags: ["Settings"],
-    summary: "Get settings",
+    tags: ["Settings"], summary: "Get company settings",
     responses: {
-      "200": {
-        description: "Get settings (placeholder)",
-        content: {
-          "application/json": { schema: z.object({ settings: Settings }) },
-        },
-      },
+      ...ErrorResponses,
+      "200": { description: "Get company settings", content: { "application/json": { schema: z.object({ settings: Settings }) } } },
     },
   };
 
   async handle(c: AppContext) {
-    return c.json({ settings: { companyName: { bg: "Примерна фирма", en: "Example Company" }, currency: "EUR" } }, 200);
+    return c.json({ settings: await getSettings(c.env.invoicer) });
   }
 }

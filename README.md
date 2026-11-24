@@ -21,12 +21,22 @@ This is an example project made to be used as a quick start into building OpenAP
 ## Development
 
 1. Run `wrangler dev` to start a local instance of the API.
-2. Open `http://localhost:8787/` in your browser to see the Swagger interface where you can try the endpoints.
-3. Changes made in the `src/` folder will automatically trigger the server to reload, you only need to refresh the Swagger interface.
+2. Open `http://localhost:8787/` for the Ledger invoice UI. Swagger is available at `http://localhost:8787/docs`.
+3. Changes to the Worker or the static UI in `public/` are picked up by Wrangler; refresh your browser to see them.
+
+The UI lists invoices with search and status filters, shows invoice details, and
+provides forms for creating draft invoices and adding customers. Invoice totals
+are calculated from line items. Names and item descriptions support English and
+Bulgarian; customer addresses are optional in either language.
+
+API writes persist to D1 and return stable UUIDs. Apply migrations and configure
+company settings through `PUT /api/settings` before creating invoices.
+The existing UI still contains placeholder/session labels; API records persist
+across reloads regardless of those labels.
 
 ## GitHub Actions
 
-`.github/workflows/ci.yml` runs lint, a type-checked Worker build, schema tests,
+`.github/workflows/ci.yml` runs lint, a type-checked Worker build, schema and endpoint tests,
 and local D1 migrations on every push and pull request. Run the same checks locally
 with `npm run lint`, `npm run build`, `npm test`, and `npm run db:migrate:local`.
 The checks use Node.js 24 and Python 3.14; the Python tests have no pip dependencies.
@@ -52,12 +62,14 @@ Both workflows install the exact dependencies from `package-lock.json` with `npm
 ## Database
 
 The D1 schema is defined by versioned SQL files in `migrations/`. TypeScript row
-models are in `src/db/models.ts`. The API handlers currently return dummy data;
-they do not read or write these tables yet.
+models are in `src/db/models.ts`, and D1 queries live in `src/db/storage.ts`.
+All endpoints use the configured `invoicer` binding, except PDF rendering, which
+is deferred and returns HTTP 501.
 
 The initial schema contains `customers`, `invoices`, `invoice_items`, `payments`,
-and a singleton `settings` table (`id = 1`). The dashboard will aggregate these
-tables rather than store a separate copy of its totals. This assumes one company
+and a singleton `settings` table (`id = 1`). Migration `0002` adds an invoice-number
+sequence, invoice revisions, and line-item tax rates. The dashboard aggregates
+these tables rather than storing a separate copy of its totals. This assumes one company
 per database. Settings are created during company setup; no example data is seeded.
 
 ```bash
@@ -85,7 +97,7 @@ Storage conventions:
   send `null` for an address translation to clear it. Customer PATCH accepts individual translations,
   such as `{ "name": { "en": "New name" } }`. Invoice input includes a nonempty
   `items` array with bilingual `description`, `quantity`, and `unitPrice` per item.
-  Blank translations are rejected. These are schema changes; handlers remain stubs.
+  Blank translations are rejected.
 - The initial migration creates bilingual fields directly. Issued/paid invoices require customer
   and company name snapshots in both languages; address snapshots are optional.
 - Settings use bilingual `companyName` and optional `companyAddress` with the same
@@ -101,8 +113,8 @@ Storage conventions:
   and that each total equals its subtotal plus tax.
 - When issuing an invoice, assign its unique number, set its issue date, and
   copy customer/company details into its snapshot fields. The database requires
-  these fields for issued and paid invoices. Application code must prevent
-  edits to issued snapshots and keep payment totals and invoice status in sync.
+  these fields for issued and paid invoices. Application code prevents
+  edits to issued snapshots and keeps payment totals and invoice status in sync.
 - Customer deletion is restricted while invoices reference it; payments prevent
   invoice deletion. Invoice items are deleted with their parent invoice.
 
@@ -111,3 +123,53 @@ Run the schema constraint tests with Python's standard library:
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
+
+## API behavior
+
+- `GET /api/customers` and `GET /api/invoices` accept `limit` (default 50, maximum
+  100) and `offset` (default 0). Responses include the records, `total`, `limit`,
+  and `offset`. Ordering is newest first, with IDs breaking timestamp ties.
+- `POST /api/customers` returns `{ customer }` with a generated ID. Customer PATCH
+  returns HTTP 200 and changes only the supplied fields or translations.
+- `GET /api/settings` returns 404 before setup. PUT creates/replaces the singleton;
+  omitted optional company addresses and number are cleared. Example setup:
+
+  ```json
+  {
+    "companyName": { "bg": "Примерна фирма", "en": "Example Company" },
+    "currency": "EUR"
+  }
+  ```
+
+- Create drafts with a customer ID and 1-100 items. Each item has a bilingual
+  `description`, positive `quantity` (up to six decimal places), `unitPrice`, and
+  optional `taxRate` percentage (default 0, up to two decimal places). `dueDate`
+  and `notes` are optional and nullable. Invoice currency is copied from settings
+  at creation and retained if settings change later.
+- All prices/payments use major units with at most two decimals. Line subtotals
+  and taxes round half up to minor units; invoice totals sum the rounded lines.
+  A line or invoice may not exceed 1,000,000,000,000 minor units. Optional input
+  `total` is verified against the calculated amount. Responses include line and
+  invoice subtotals, taxes, totals, `paidTotal`, and `outstandingTotal`.
+- Invoice PATCH replaces `items` if supplied and updates other supplied fields.
+  Only drafts can be edited. Concurrent edits use a revision check and guarded
+  D1 batches; a conflicting write returns 409 without changing the items.
+- Issuing allocates a unique ten-digit, zero-padded number, sets today's UTC
+  issue date, and freezes both customer and company details. All issuing writes
+  share a transaction. Reissuing returns 409. Zero-total invoices become paid
+  immediately. Draft responses have null party snapshots until issuing.
+- Payments are accepted only for issued invoices, must be positive, and cannot
+  exceed the outstanding balance. `reference` and `paidAt` (UTC ISO datetime) are
+  optional. Payment timestamps are returned in UTC SQLite format. Inserting a
+  payment and updating invoice status/revision share a transaction; concurrent
+  overpayments are rejected with 409. Full payment changes status to `paid`.
+- Dashboard outstanding totals include issued invoices after partial payments,
+  excluding drafts and paid invoices. `outstandingTotal` uses the current company
+  currency; `outstandingByCurrency` reports each currency separately.
+- Missing records return 404; workflow conflicts return 409; invalid input returns
+  400/422. `GET /api/invoices/:id/pdf` returns 501 until PDF rendering is added.
+
+`npm test` runs the SQLite schema tests and HTTP endpoint tests against isolated
+local D1 storage through Miniflare. It requires no Cloudflare account and never
+accesses production. The endpoint tests cover persistence, rounding, snapshots,
+concurrent writes, payment balance checks, rollback, and OpenAPI generation.
